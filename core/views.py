@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from django.contrib.auth.hashers import make_password
 from datetime import date, timedelta
+from django.views.decorators.csrf import csrf_exempt
 
 
 from .models import Base_User, Base_Events, Base_Volunteer, Base_Issue, Base_Donations, Base_Items, Base_Order, Base_Resources, Base_Discussions
@@ -20,7 +21,7 @@ from .models import Base_User, Base_Events, Base_Volunteer, Base_Issue, Base_Don
 import stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-
+@csrf_exempt
 def user_verified(view_func):
     def wrapped_view(request, *args, **kwargs):
         if request.user.user_type <2:
@@ -31,6 +32,7 @@ def user_verified(view_func):
             return redirect('not_verified') 
     return wrapped_view
 
+@csrf_exempt
 def admin_only(view_func):
     def wrapped_view(request, *args, **kwargs):
         if request.user.user_type == 0:
@@ -40,7 +42,7 @@ def admin_only(view_func):
     return wrapped_view
 
 
-
+@csrf_exempt
 def sent_mail(mail):
     # Email configuration
     sender_email = 'mhdirfanshafi@outlook.com'
@@ -93,6 +95,7 @@ def sent_mail(mail):
 
 
 
+@csrf_exempt
 @login_required(login_url='/login')
 def index(request):
     if request.user.is_authenticated:
@@ -109,11 +112,13 @@ def index(request):
             return redirect('publish_paper')
     return redirect('login')
 
+@csrf_exempt
 @login_required(login_url='/login')
 def organiser_requests(request):
     organisers = Base_User.objects.filter(user_type=2, verified=False)
     return render(request, 'main/organiser_requests.html',{'organisers': organisers})
 
+@csrf_exempt
 def organiser_request_approve(request, organiser_id):
     organiser = Base_User.objects.get(user_id=organiser_id)
     organiser.verified = True
@@ -122,17 +127,20 @@ def organiser_request_approve(request, organiser_id):
     return redirect('organiser_requests')
     
 
+@csrf_exempt
 def organiser_request_reject(request, organiser_id):
     organiser = Base_User.objects.get(user_id=organiser_id)
     organiser.delete()
     return redirect('organiser_requests')
 
 @login_required(login_url='/login')
+@csrf_exempt
 def supplier_requests(request):
     suppliers = Base_User.objects.filter(user_type=3, verified=False)
     context = { 'suppliers': suppliers }
     return render(request, 'main/supplier_requests.html', context)
 
+@csrf_exempt
 def supplier_request_approve(request, supplier_id):
     supplier = Base_User.objects.get(user_id=supplier_id)
     supplier.verified = True
@@ -140,16 +148,19 @@ def supplier_request_approve(request, supplier_id):
     sent_mail(supplier)
     return redirect('supplier_requests')
 
+@csrf_exempt
 def supplier_request_reject(request, supplier_id):
     supplier = Base_User.objects.get(user_id=supplier_id)
     supplier.delete()
     return redirect('supplier_requests')
 
 @login_required(login_url='/login')
+@csrf_exempt
 def researcher_requests(request):
     researchers = Base_User.objects.filter(user_type=4, verified=False)
     return render(request, 'main/researcher_requests.html',{'researchers':researchers})
 
+@csrf_exempt
 def researcher_request_approve(request, researcher_id):
     researcher = Base_User.objects.get(user_id=researcher_id)
     researcher.verified = True
@@ -157,6 +168,7 @@ def researcher_request_approve(request, researcher_id):
     sent_mail(researcher.email)
     return redirect('researcher_requests')
 
+@csrf_exempt
 def researcher_request_reject(request, researcher_id):
     researcher = Base_User.objects.get(user_id=researcher_id)
     researcher.delete()
@@ -164,6 +176,7 @@ def researcher_request_reject(request, researcher_id):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def raised_issues(request):
     issues_raised = Base_Issue.objects.filter(is_verified=False)
     if request.user.user_type == 0:
@@ -172,6 +185,7 @@ def raised_issues(request):
         return render(request, 'Organiser/raised_issues.html',{'issues_raised':issues_raised})    
 
 @login_required(login_url='/login')
+@csrf_exempt
 def donations(request):
     donations_received = Base_Donations.objects.all()
     return render(request, 'main/donations.html',{'donations_received':donations_received})
@@ -180,6 +194,7 @@ def donations(request):
 
 
 @login_required(login_url='/login')
+@csrf_exempt
 def volunteer(request):
     today = timezone.now().date()
     events = Base_Events.objects.filter(
@@ -202,6 +217,7 @@ def volunteer(request):
     return render(request, 'endUser/volunteer.html',context)
 
 @login_required(login_url='/login')
+@csrf_exempt
 def register_event(request, event_id):
     event = Base_Events.objects.get(event_id=event_id)
     Base_Volunteer.objects.create(
@@ -211,6 +227,7 @@ def register_event(request, event_id):
     return redirect('volunteer')
 
 @login_required(login_url='/login')
+@csrf_exempt
 def unregister_event(request, event_id):
     event = Base_Volunteer.objects.get(event_id=event_id,user_id=request.user)
     event.delete()
@@ -219,6 +236,7 @@ def unregister_event(request, event_id):
     
 
 @login_required
+@csrf_exempt
 def raise_issues(request):
     if request.method == 'POST':
         location = request.POST.get('Location')
@@ -272,12 +290,14 @@ def raise_issues(request):
     return render(request, 'endUser/raise_issues.html', context)
 
 @login_required(login_url='/login')
+@csrf_exempt
 def marketPlace(request):
     items = Base_Items.objects.all()
     context = {'items': items}
     return render(request, 'endUser/marketPlace.html', context)
 
 @login_required(login_url='/login')
+@csrf_exempt
 def active_orders(request):
     active_orders = Base_Order.objects.filter(is_delivered=False, is_cancelled=False, customer_id=request.user)
     orders = Base_Order.objects.filter(is_delivered=True, is_cancelled=False, customer_id=request.user)
@@ -291,6 +311,7 @@ def active_orders(request):
 
 
 @login_required(login_url='/login')
+@csrf_exempt
 def cancel_order(request, order_id):
     order = Base_Order.objects.get(order_id=order_id)
     qty, item = order.qty, order.item_id
@@ -303,6 +324,7 @@ def cancel_order(request, order_id):
     return redirect('orders_')
 
 @login_required(login_url='/login')
+@csrf_exempt
 def buy_item(request, item_id):
     item = Base_Items.objects.get(item_id=item_id)
     if request.method == 'POST':
@@ -340,6 +362,7 @@ def buy_item(request, item_id):
     return render(request, 'endUser/buy_item.html', context)
 
 @login_required(login_url='/login')
+@csrf_exempt
 def resources(request):
     view_resources = Base_Resources.objects.all()
     context = {'view_resources': view_resources}
@@ -347,6 +370,7 @@ def resources(request):
 
 
 @login_required
+@csrf_exempt
 def donate(request):
     if request.method == 'POST':
         amount = request.POST.get('amount')
@@ -380,6 +404,7 @@ def donate(request):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def organise_event(request):
     if request.method == 'POST':
         location = request.POST.get('Location')
@@ -417,6 +442,7 @@ def organise_event(request):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def manage_volunteers(request):
     today = timezone.now().date()
     events = Base_Events.objects.filter(event_date__gte=today, organiser_id = request.user)
@@ -431,6 +457,7 @@ def manage_volunteers(request):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def manage_volunteer_details(request, event_id):
     volunteers = Base_Volunteer.objects.filter(event_id=event_id)
     context = { 'volunteers': volunteers }
@@ -439,6 +466,7 @@ def manage_volunteer_details(request, event_id):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def remove_volunteer(request, volunteer_id):
     volunteer = Base_Volunteer.objects.get(volunteer_id=volunteer_id)
     volunteer.delete()
@@ -451,6 +479,7 @@ def remove_volunteer(request, volunteer_id):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def orders(request):
     active_orders = Base_Order.objects.filter(is_delivered=False, is_cancelled = False, supplier_id=request.user)
     orders = Base_Order.objects.filter(is_delivered=True, is_cancelled = False, supplier_id=request.user)
@@ -461,6 +490,7 @@ def orders(request):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def list_items(request):
     items = Base_Items.objects.filter(supplier_id=request.user)
     context = {'items': items}
@@ -468,6 +498,7 @@ def list_items(request):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def add_item(request):
     if request.method == 'POST':
         item_name = request.POST.get('item-name')
@@ -523,6 +554,7 @@ def add_item(request):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def cancelled_orders(request):
     orders = Base_Order.objects.filter(supplier_id=request.user, is_cancelled=True)
     context = {'orders': orders}
@@ -530,6 +562,7 @@ def cancelled_orders(request):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def return_pay(request, order_id):
     orders = Base_Order.objects.get(order_id=order_id)
     amount = orders.total
@@ -562,6 +595,7 @@ def return_pay(request, order_id):
  
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def edit_item(request, item_id):
     item = Base_Items.objects.get(item_id=item_id)
     if request.method == 'POST':
@@ -614,6 +648,7 @@ def edit_item(request, item_id):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def delete_item(request, item_id):
     item = Base_Items.objects.get(item_id=item_id)
     item.delete()
@@ -621,6 +656,7 @@ def delete_item(request, item_id):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def order_delivered(request, order_id):
     order = Base_Order.objects.get(order_id=order_id)
     order.is_delivered = True
@@ -633,6 +669,7 @@ def order_delivered(request, order_id):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def publish_paper(request):
     if request.method == 'POST':
         description = request.POST.get('description')
@@ -677,6 +714,7 @@ def publish_paper(request):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def manage_resources(request):
     resources = Base_Resources.objects.filter(publisher_id=request.user)
     context = {'resources': resources}
@@ -686,6 +724,7 @@ def manage_resources(request):
 
 @login_required(login_url='/login')
 @user_verified
+@csrf_exempt
 def delete_resource(request, resource_id):
     resource = Base_Resources.objects.get(resource_id=resource_id)
     resource.delete()
@@ -695,6 +734,7 @@ def delete_resource(request, resource_id):
 
 
 
+@csrf_exempt
 def loginPage(request):
     if request.user.is_authenticated:
         return redirect('index')
@@ -739,6 +779,7 @@ def loginPage(request):
 
 
 
+@csrf_exempt
 def userRegister(request):
     if request.user.is_authenticated:
         return redirect('index')
@@ -821,6 +862,7 @@ def userRegister(request):
 
 
 @login_required(login_url='/login')
+@csrf_exempt
 def logoutUser(request):
     logout(request)
 
@@ -828,22 +870,26 @@ def logoutUser(request):
 
 
 @login_required(login_url='/login')
+@csrf_exempt
 def userProfile(request, user_id):
     user = Base_User.objects.get(user_id=user_id)
     context = {'user': user}
     return render(request, 'user_profile.html', context)
 
 @login_required(login_url='/login')
+@csrf_exempt
 def itemDescription(request, item_id):
     item = Base_Items.objects.get(item_id=item_id)
     context = {'item': item}
     return render(request, 'item_description.html', context)
 
 @login_required(login_url='/login')
+@csrf_exempt
 def not_verified(request):
     return render(request, 'not_verified.html')
 
 @login_required(login_url='/login')
+@csrf_exempt
 def issues_raised(request):
     active_issues = Base_Issue.objects.filter(is_verified=True, is_closed=False)
     issues = Base_Issue.objects.filter(is_closed=True)
@@ -851,6 +897,7 @@ def issues_raised(request):
     return render(request, 'issues_raised.html',context)
 
 @login_required(login_url='/login')
+@csrf_exempt
 def view_issue(request, issue_id):
     issue = Base_Issue.objects.get(issue_id=issue_id)
     if request.method == 'POST':
@@ -869,6 +916,7 @@ def view_issue(request, issue_id):
 
 @login_required(login_url='/login')
 @admin_only
+@csrf_exempt
 def close_issue(request, issue_id):
     issue = Base_Issue.objects.get(issue_id=issue_id)
     issue.is_closed = True
@@ -876,6 +924,7 @@ def close_issue(request, issue_id):
     return redirect('issues_raised')
 
 @login_required(login_url='/login')
+@csrf_exempt
 def issue_approve(request, issue_id):
     issue = Base_Issue.objects.get(issue_id=issue_id)
     issue.is_verified = True
@@ -883,6 +932,7 @@ def issue_approve(request, issue_id):
     return redirect('raised_issues')
 
 @login_required(login_url='/login')
+@csrf_exempt
 def issue_reject(request, issue_id):
     issue = Base_Issue.objects.get(issue_id=issue_id)
     issue.delete()
@@ -890,6 +940,7 @@ def issue_reject(request, issue_id):
 
 
 @login_required(login_url='/login')
+@csrf_exempt
 def payment_success(request):
     data = request.session.get('data')
     del request.session['data']
@@ -934,6 +985,7 @@ def payment_success(request):
     return render(request, 'payment-success.html', context)
 
 @login_required(login_url='/login')
+@csrf_exempt
 def payment_cancelled(request):
     data = request.session.get('data')
     del request.session['data']
